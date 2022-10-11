@@ -1,8 +1,22 @@
 # 系统原理
+Binder机制分为这么几个阶段
+* binder驱动的加载
+* servermanager的启动
+* service的添加
+* service的获取
 Binder机制通过共享内存的方式实现了跨进程通信，数据在客户端进程和服务端进程只需要拷贝一次，其内存共享数据拷贝都在内核空间实现。首先系统在启动的时候会启动一个ServiceManager进程，让该进程和Binder驱动建立关系，并保存在Binder驱动当中，该进程的标识handle为0，让服务的BnServiceManager进入循环并在驱动测阻塞。Client进程通过调用ServiceManager的接口，获取到BpBinder的实现类，并将Server进程的标识0、数据指针和方法标识code传递给内核驱动，此时就说明需要驱动找到ServiceManager作为Server并调用code标识的方法进行业务处理，驱动收到事务后将客户端传递的数据拷贝到ServiceManager的进程当中，紧接着客户端线程会进入阻塞状态，同时唤醒正在处于阻塞状态的ServiceManager进程线程，此时已经从客户端进程转入到服务端进程当中，被唤醒的ServiceManager进程的BnServiceManager就开始执行对应的方法，最后将执行结果拷贝到Client的内存当中，唤醒正在阻塞的客户端进程并进入阻塞状态。经过一次这样的流程后就完成了【Client进程--Server进程-Client进程】的一次数据交换和业务处理。当然获取其他服务也是通过给ServiceManager进程获取到对应Server的BpBinder实现类，从而从驱动当中找到对应的BnBinder的实现类进行对应的操作。
 
 # 架构设计
 
+![BP](./UML/UML_BP.jpg)
+
+# 问题
+
+* 1、被添加的是BpBinder还是BBinder对应的服务子类？
+* 2、是否每次都需要Servicemanager进程参与
+* 3、handle是怎么分配的
+* 4、是不是每个Bn服务必须有一个线程处于阻塞等待状态？
+* 5、ServiceManager进程和AMS等同一个进程是怎么区分的？
 
 # 详细实现
 
