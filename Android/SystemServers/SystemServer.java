@@ -235,7 +235,6 @@ import java.util.concurrent.Future;
  * Entry point to {@code system_server}.
  */
 public final class SystemServer implements Dumpable {
-
     private static final String TAG = "SystemServer";
 
     private static final String ENCRYPTING_STATE = "trigger_restart_min_framework";
