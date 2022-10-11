@@ -158,9 +158,11 @@ public final class Looper {
     @SuppressWarnings("AndroidFrameworkBinderIdentity")
     private static boolean loopOnce(final Looper me,
             final long ident, final int thresholdOverride) {
+        // 获取一个消息，如果消息触发时间没到，则进入阻塞状态
         Message msg = me.mQueue.next(); // might block
         if (msg == null) {
             // No message indicates that the message queue is quitting.
+            // 没有消息表示消息队列正在退出。
             return false;
         }
 
@@ -198,7 +200,7 @@ public final class Looper {
         }
         long origWorkSource = ThreadLocalWorkSource.setUid(msg.workSourceUid);
         try {
-            msg.target.dispatchMessage(msg);
+            msg.target.dispatchMessage(msg);// 开始一个消息的分发
             if (observer != null) {
                 observer.messageDispatched(token, msg);
             }
@@ -246,7 +248,7 @@ public final class Looper {
                     + msg.target.getClass().getName() + " "
                     + msg.callback + " what=" + msg.what);
         }
-
+        // 分发完成回收消息
         msg.recycleUnchecked();
 
         return true;
@@ -258,7 +260,7 @@ public final class Looper {
      */
     @SuppressWarnings("AndroidFrameworkBinderIdentity")
     public static void loop() {
-        final Looper me = myLooper();
+        final Looper me = myLooper();// 获取prepare创建的Looper对象
         if (me == null) {
             throw new RuntimeException("No Looper; Looper.prepare() wasn't called on this thread.");
         }
@@ -266,11 +268,12 @@ public final class Looper {
             Slog.w(TAG, "Loop again would have the queued messages be executed"
                     + " before this one completed.");
         }
-
+        // 置为已经循环
         me.mInLoop = true;
 
         // Make sure the identity of this thread is that of the local process,
         // and keep track of what that identity token actually is.
+        // 防止跨进程调用，清掉Binder鉴权
         Binder.clearCallingIdentity();
         final long ident = Binder.clearCallingIdentity();
 

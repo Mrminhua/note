@@ -322,55 +322,63 @@ public final class MessageQueue {
         // This can happen if the application tries to restart a looper after quit
         // which is not supported.
         final long ptr = mPtr;
-        if (ptr == 0) {
+        if (ptr == 0) {// 只有looper对象回收才会退出
             return null;
         }
 
         int pendingIdleHandlerCount = -1; // -1 only during first iteration
-        int nextPollTimeoutMillis = 0;
+        int nextPollTimeoutMillis = 0;// 默认等待时间是0，标识不等待
+        // 又开启一个死循环
         for (;;) {
             if (nextPollTimeoutMillis != 0) {
                 Binder.flushPendingCommands();
             }
 
+            // 将下一个时间传递给native层
             nativePollOnce(ptr, nextPollTimeoutMillis);
 
             synchronized (this) {
                 // Try to retrieve the next message.  Return if found.
+                // 尝试检索下一条消息。如果找到，请返回。
                 final long now = SystemClock.uptimeMillis();
                 Message prevMsg = null;
                 Message msg = mMessages;
                 if (msg != null && msg.target == null) {
                     // Stalled by a barrier.  Find the next asynchronous message in the queue.
+                    // 查找消息链表当中的异步消息，先于其前面的同步消息执行，比如绘制VSYNC-APP
                     do {
                         prevMsg = msg;
-                        msg = msg.next;
+                        msg = msg.next;// 找到一个异步消息或者消息全遍历完才结束循环
                     } while (msg != null && !msg.isAsynchronous());
                 }
                 if (msg != null) {
                     if (now < msg.when) {
                         // Next message is not ready.  Set a timeout to wake up when it is ready.
+                        // 如果当前时间不到消息时间则计算需要等待的时间
                         nextPollTimeoutMillis = (int) Math.min(msg.when - now, Integer.MAX_VALUE);
                     } else {
                         // Got a message.
+                        // 找到了一个消息
                         mBlocked = false;
-                        if (prevMsg != null) {
+                        if (prevMsg != null) {// 前一个消息不是空
                             prevMsg.next = msg.next;
                         } else {
                             mMessages = msg.next;
                         }
                         msg.next = null;
                         if (DEBUG) Log.v(TAG, "Returning message: " + msg);
+                        // 标记消息在用
                         msg.markInUse();
                         return msg;
                     }
                 } else {
                     // No more messages.
+                    // 消息为空说明消息队列当中没有消息因此传递-1
                     nextPollTimeoutMillis = -1;
                 }
 
                 // Process the quit message now that all pending messages have been handled.
-                if (mQuitting) {
+                if (mQuitting) {// 退出 
                     dispose();
                     return null;
                 }
@@ -382,7 +390,7 @@ public final class MessageQueue {
                         && (mMessages == null || now < mMessages.when)) {
                     pendingIdleHandlerCount = mIdleHandlers.size();
                 }
-                if (pendingIdleHandlerCount <= 0) {
+                if (pendingIdleHandlerCount <= 0) {// 没有IlderHandler需要执行
                     // No idle handlers to run.  Loop and wait some more.
                     mBlocked = true;
                     continue;
@@ -477,6 +485,8 @@ public final class MessageQueue {
     private int postSyncBarrier(long when) {
         // Enqueue a new sync barrier token.
         // We don't need to wake the queue because the purpose of a barrier is to stall it.
+        //登记新的同步障碍令牌。
+        //我们不需要叫醒队列，因为屏障的目的是阻止它。
         synchronized (this) {
             final int token = mNextBarrierToken++;
             final Message msg = Message.obtain();
@@ -487,7 +497,7 @@ public final class MessageQueue {
             Message prev = null;
             Message p = mMessages;
             if (when != 0) {
-                while (p != null && p.when <= when) {
+                while (p != null && p.when <= when) {// 将屏障消息插入到何时的位置
                     prev = p;
                     p = p.next;
                 }
@@ -495,7 +505,7 @@ public final class MessageQueue {
             if (prev != null) { // invariant: p == prev.next
                 msg.next = p;
                 prev.next = msg;
-            } else {
+            } else {// 所有消息都在屏障消息之前
                 msg.next = p;
                 mMessages = msg;
             }
@@ -548,7 +558,7 @@ public final class MessageQueue {
     }
 
     boolean enqueueMessage(Message msg, long when) {
-        if (msg.target == null) {
+        if (msg.target == null) { // 消息必须有处理对象
             throw new IllegalArgumentException("Message must have a target.");
         }
 
@@ -557,7 +567,7 @@ public final class MessageQueue {
                 throw new IllegalStateException(msg + " This message is already in use.");
             }
 
-            if (mQuitting) {
+            if (mQuitting) { // looper退出
                 IllegalStateException e = new IllegalStateException(
                         msg.target + " sending message to a Handler on a dead thread");
                 Log.w(TAG, e.getMessage(), e);
@@ -567,36 +577,38 @@ public final class MessageQueue {
 
             msg.markInUse();
             msg.when = when;
-            Message p = mMessages;
+            Message p = mMessages;// 第一次是null
             boolean needWake;
             if (p == null || when == 0 || when < p.when) {
                 // New head, wake up the event queue if blocked.
-                msg.next = p;
-                mMessages = msg;
-                needWake = mBlocked;
+                // 只有这个消息，or 马上要响应 or 有多个消息，这个消息早于其他消息
+                msg.next = p; // 第一个消息的next指向null
+                mMessages = msg;// 并让当前消息记录在这里
+                needWake = mBlocked; // mBlocked是next当中标识者是否阻塞的标志。true标识现在处于阻塞状态，因此需要唤醒
             } else {
                 // Inserted within the middle of the queue.  Usually we don't have to wake
                 // up the event queue unless there is a barrier at the head of the queue
                 // and the message is the earliest asynchronous message in the queue.
+                // 需要把消息插入到指定位置，如果是阻塞，上个消息没有处理对象，是个屏障消息才唤醒
                 needWake = mBlocked && p.target == null && msg.isAsynchronous();
                 Message prev;
                 for (;;) {
                     prev = p;
                     p = p.next;
-                    if (p == null || when < p.when) {
+                    if (p == null || when < p.when) {// 后面没有消息，或者该消息应该在前（理论上不会）
                         break;
                     }
-                    if (needWake && p.isAsynchronous()) {
+                    if (needWake && p.isAsynchronous()) {// 如果后面有屏障消息则不唤醒
                         needWake = false;
                     }
                 }
                 msg.next = p; // invariant: p == prev.next
-                prev.next = msg;
+                prev.next = msg; // 没有消息，直接插到后面
             }
 
             // We can assume mPtr != 0 because mQuitting is false.
-            if (needWake) {
-                nativeWake(mPtr);
+            if (needWake) {// 最终唤醒native
+                nativeWake(mPtr);// mptr只在退出的时候是0
             }
         }
         return true;

@@ -772,7 +772,7 @@ public class Handler {
         msg.target = this;
         msg.workSourceUid = ThreadLocalWorkSource.getUid();
 
-        if (mAsynchronous) {
+        if (mAsynchronous) {// 除非特殊的消息，否则这里一直为false
             msg.setAsynchronous(true);
         }
         return queue.enqueueMessage(msg, uptimeMillis);
