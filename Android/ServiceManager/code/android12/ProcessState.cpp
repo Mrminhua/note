@@ -45,7 +45,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <mutex>
-
+ // #define _SC_PAGE_SIZE 0x0028  十进制40
+// 1M - 2*40K  
 #define BINDER_VM_SIZE ((1 * 1024 * 1024) - sysconf(_SC_PAGE_SIZE) * 2)
 #define DEFAULT_MAX_BINDER_THREADS 15
 #define DEFAULT_ENABLE_ONEWAY_SPAM_DETECTION 1

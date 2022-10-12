@@ -5112,10 +5112,10 @@ static int binder_ioctl_get_freezer_info(
 static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret;
-	struct binder_proc *proc = filp->private_data;
+	struct binder_proc *proc = filp->private_data;//从文件中获取到open创建的proc
 	struct binder_thread *thread;
-	unsigned int size = _IOC_SIZE(cmd);
-	void __user *ubuf = (void __user *)arg;
+	unsigned int size = _IOC_SIZE(cmd);//获取到命令
+	void __user *ubuf = (void __user *)arg;//参数
 
 	/*pr_info("binder_ioctl: %d:%d %x %lx\n",
 			proc->pid, current->pid, cmd, arg);*/
@@ -5124,11 +5124,12 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	trace_binder_ioctl(cmd, arg);
 
+	// 进入等待
 	ret = wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
 	if (ret)
 		goto err_unlocked;
 
-	thread = binder_get_thread(proc);
+	thread = binder_get_thread(proc);// 得到一个线程
 	if (thread == NULL) {
 		ret = -ENOMEM;
 		goto err;
@@ -6337,11 +6338,11 @@ static int __init binder_init(void)
 
 	atomic_set(&binder_transaction_log.cur, ~0U);
 	atomic_set(&binder_transaction_log_failed.cur, ~0U);
-
+	// 创建binder节点
 	binder_debugfs_dir_entry_root = debugfs_create_dir("binder", NULL);
 	if (binder_debugfs_dir_entry_root)
 		binder_debugfs_dir_entry_proc = debugfs_create_dir("proc",
-						 binder_debugfs_dir_entry_root);
+						 binder_debugfs_dir_entry_root);//创建一个proc
 
 	if (binder_debugfs_dir_entry_root) {
 		debugfs_create_file("state",

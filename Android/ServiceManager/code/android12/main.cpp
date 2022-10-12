@@ -127,16 +127,20 @@ int main(int argc, char** argv) {
     ps->setThreadPoolMaxThreadCount(0);
     ps->setCallRestriction(ProcessState::CallRestriction::FATAL_IF_NOT_ONEWAY);
 
+    // 创建一个BnServiceManager对象并添加到自身当中
     sp<ServiceManager> manager = sp<ServiceManager>::make(std::make_unique<Access>());
     if (!manager->addService("manager", manager, false /*allowIsolated*/, IServiceManager::DUMP_FLAG_PRIORITY_DEFAULT).isOk()) {
         LOG(ERROR) << "Could not self register servicemanager";
     }
 
+    // 将BnServiceManager对象添加到驱动当中
     IPCThreadState::self()->setTheContextObject(manager);
     ps->becomeContextManager();
 
+    // 创建一个looper对象
     sp<Looper> looper = Looper::prepare(false /*allowNonCallbacks*/);
 
+    // 设置消息回调
     BinderCallback::setupTo(looper);
     ClientCallbackCallback::setupTo(looper, manager);
 
@@ -146,6 +150,7 @@ int main(int argc, char** argv) {
     }
 #endif
 
+    //让消息开始循环
     while(true) {
         looper->pollAll(-1);
     }
