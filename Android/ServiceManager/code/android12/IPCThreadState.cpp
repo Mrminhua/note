@@ -692,7 +692,7 @@ status_t IPCThreadState::handlePolledCommands()
 {
     status_t result;
 
-    do {
+    do {// 此处读取驱动内容，并处于阻塞状态
         result = getAndExecuteCommand();
     } while (mIn.dataPosition() < mIn.dataSize());
 
@@ -1007,7 +1007,7 @@ finish:
     return err;
 }
 
-status_t IPCThreadState::talkWithDriver(bool doReceive)
+status_t IPCThreadState::talkWithDriver(bool doReceive)// 方法默认值是true
 {
     if (mProcess->mDriverFD < 0) {
         return -EBADF;

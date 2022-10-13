@@ -4854,7 +4854,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		ret = -EINVAL;
 		goto out;
 	}
-	if (copy_from_user(&bwr, ubuf, sizeof(bwr))) {
+	if (copy_from_user(&bwr, ubuf, sizeof(bwr))) {// 拷贝数据
 		ret = -EFAULT;
 		goto out;
 	}
@@ -4864,7 +4864,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		     (u64)bwr.write_size, (u64)bwr.write_buffer,
 		     (u64)bwr.read_size, (u64)bwr.read_buffer);
 
-	if (bwr.write_size > 0) {
+	if (bwr.write_size > 0) { // 写大于0
 		ret = binder_thread_write(proc, thread,
 					  bwr.write_buffer,
 					  bwr.write_size,
@@ -4877,7 +4877,7 @@ static int binder_ioctl_write_read(struct file *filp,
 			goto out;
 		}
 	}
-	if (bwr.read_size > 0) {
+	if (bwr.read_size > 0) { // 小于零
 		ret = binder_thread_read(proc, thread, bwr.read_buffer,
 					 bwr.read_size,
 					 &bwr.read_consumed,
@@ -4898,7 +4898,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		     proc->pid, thread->pid,
 		     (u64)bwr.write_consumed, (u64)bwr.write_size,
 		     (u64)bwr.read_consumed, (u64)bwr.read_size);
-	if (copy_to_user(ubuf, &bwr, sizeof(bwr))) {
+	if (copy_to_user(ubuf, &bwr, sizeof(bwr))) { // 将数据拷贝给用户空间
 		ret = -EFAULT;
 		goto out;
 	}
