@@ -671,7 +671,7 @@ static void ensureProcessCanBlockSuspend() {
 
 const int EventHub::EPOLL_MAX_EVENTS;
 
-EventHub::EventHub(void)
+(void)
       : mBuiltInKeyboardId(NO_BUILT_IN_KEYBOARD),
         mNextDeviceId(1),
         mControllerNumbers(),
@@ -680,7 +680,7 @@ EventHub::EventHub(void)
         mNeedToScanDevices(true),
         mPendingEventCount(0),
         mPendingEventIndex(0),
-        mPendingINotify(false) {
+        mPendingINotify(false) {EventHub::EventHub
     ensureProcessCanBlockSuspend();
 
     mEpollFd = epoll_create1(EPOLL_CLOEXEC);
