@@ -735,12 +735,12 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
     };
 
     private final ToBooleanFunction<WindowState> mFindFocusedWindow = w -> {
-        final ActivityRecord focusedApp = mFocusedApp;
+        final ActivityRecord focusedApp = mFocusedApp; // 当前聚焦APP
         ProtoLog.v(WM_DEBUG_FOCUS, "Looking for focus: %s, flags=%d, canReceive=%b, reason=%s",
                 w, w.mAttrs.flags, w.canReceiveKeys(),
                 w.canReceiveKeysReason(false /* fromUserTouch */));
 
-        if (!w.canReceiveKeys()) {
+        if (!w.canReceiveKeys()) {// 窗口必须是可以触摸或者能接收事件的，才会判断是否更新焦点
             return false;
         }
 
@@ -750,6 +750,9 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
         // dismissing during the task switching to keep the window focus because IME window has
         // higher window hierarchy, we don't give it focus if the next IME layering target
         // doesn't request IME visible.
+        //切换应用程序任务时，我们保持IME窗口的可见性，以获得更好的过渡体验。
+        //然而，如果IME创建了一个子窗口或IME选择对话框，但在任务切换过程中没有关闭以保持窗口焦点，//////////
+        // 因为IME窗口具有更高的窗口层次结构，那么如果下一个IME分层目标没有请求IME可见，我们就不会给它焦点。
         if (w.mIsImWindow && w.isChildWindow() && (mImeLayeringTarget == null
                 || !mImeLayeringTarget.getRequestedVisibility(ITYPE_IME))) {
             return false;
@@ -763,14 +766,14 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
 
         final ActivityRecord activity = w.mActivityRecord;
 
-        if (focusedApp == null) {
+        if (focusedApp == null) {// 如果没有聚焦app那么就是当前窗口
             ProtoLog.v(WM_DEBUG_FOCUS_LIGHT,
                     "findFocusedWindow: focusedApp=null using new focus @ %s", w);
             mTmpWindow = w;
             return true;
         }
 
-        if (!focusedApp.windowsAreFocusable()) {
+        if (!focusedApp.windowsAreFocusable()) {// 聚焦app的窗口没有聚焦
             // Current focused app windows aren't focusable...
             ProtoLog.v(WM_DEBUG_FOCUS_LIGHT, "findFocusedWindow: focusedApp windows not"
                     + " focusable using new focus @ %s", w);
@@ -780,8 +783,8 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
 
         // Descend through all of the app tokens and find the first that either matches
         // win.mActivityRecord (return win) or mFocusedApp (return null).
-        if (activity != null && w.mAttrs.type != TYPE_APPLICATION_STARTING) {
-            if (focusedApp.compareTo(activity) > 0) {
+        if (activity != null && w.mAttrs.type != TYPE_APPLICATION_STARTING) {// 不是启动窗口
+            if (focusedApp.compareTo(activity) > 0) {// 聚焦窗口和app窗口不是同一个
                 // App root task below focused app root task. No focus for you!!!
                 ProtoLog.v(WM_DEBUG_FOCUS_LIGHT,
                         "findFocusedWindow: Reached focused app=%s", focusedApp);
@@ -791,6 +794,8 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
 
             // If the candidate activity is currently being embedded in the focused task, the
             // activity cannot be focused unless it is on the same TaskFragment as the focusedApp's.
+            //如果候选活动当前嵌入到重点任务中，则
+            //除非活动与focusedApp位于同一TaskFragment上，否则无法将其聚焦。
             TaskFragment parent = activity.getTaskFragment();
             if (parent != null && parent.isEmbedded()) {
                 Task hostTask = focusedApp.getTask();
@@ -3604,9 +3609,9 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
      * @return {@code true} if the focused window has changed.
      */
     boolean updateFocusedWindowLocked(int mode, boolean updateInputWindows,
-            int topFocusedDisplayId) {
+            int topFocusedDisplayId) {// 焦点判断
         WindowState newFocus = findFocusedWindowIfNeeded(topFocusedDisplayId);
-        if (mCurrentFocus == newFocus) {
+        if (mCurrentFocus == newFocus) { // 焦点窗口没有变化
             return false;
         }
         boolean imWindowChanged = false;

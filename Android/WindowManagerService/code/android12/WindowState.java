@@ -1140,6 +1140,7 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
         DeathRecipient deathRecipient = new DeathRecipient();
         mPowerManagerWrapper = powerManagerWrapper;
         mForceSeamlesslyRotate = token.mRoundedCornerOverlay;
+        // 创建窗口的InputWindleHandle
         mInputWindowHandle = new InputWindowHandleWrapper(new InputWindowHandle(
                 mActivityRecord != null
                         ? mActivityRecord.getInputApplicationHandle(false /* update */) : null,
@@ -1177,7 +1178,7 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
             return;
         }
         mDeathRecipient = deathRecipient;
-
+        // 子窗口
         if (mAttrs.type >= FIRST_SUB_WINDOW && mAttrs.type <= LAST_SUB_WINDOW) {
             // The multiplier here is to reserve space for multiple
             // windows in the same type layer.
@@ -1188,20 +1189,22 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
 
             mLayoutAttached = mAttrs.type !=
                     WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG;
+            // 子窗口的类型指向父窗口
             mIsImWindow = parentWindow.mAttrs.type == TYPE_INPUT_METHOD
                     || parentWindow.mAttrs.type == TYPE_INPUT_METHOD_DIALOG;
             mIsWallpaper = parentWindow.mAttrs.type == TYPE_WALLPAPER;
-        } else {
+        } else {// 其他窗口
             // The multiplier here is to reserve space for multiple
             // windows in the same type layer.
+            //这里的乘数是为倍数保留空间 同一类型层中的窗口。TYPE_LAYER_MULTIPLIER=10000 TYPE_LAYER_OFFSET=1000
             mBaseLayer = mPolicy.getWindowLayerLw(this)
                     * TYPE_LAYER_MULTIPLIER + TYPE_LAYER_OFFSET;
             mSubLayer = 0;
             mIsChildWindow = false;
             mLayoutAttached = false;
             mIsImWindow = mAttrs.type == TYPE_INPUT_METHOD
-                    || mAttrs.type == TYPE_INPUT_METHOD_DIALOG;
-            mIsWallpaper = mAttrs.type == TYPE_WALLPAPER;
+                    || mAttrs.type == TYPE_INPUT_METHOD_DIALOG;// 输入法窗口
+            mIsWallpaper = mAttrs.type == TYPE_WALLPAPER;// 壁纸窗口
         }
         mIsFloatingLayer = mIsImWindow || mIsWallpaper;
 
@@ -1225,6 +1228,7 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
 
         // Make sure we initial all fields before adding to parentWindow, to prevent exception
         // during onDisplayChanged.
+        // 如果是子窗口需要添加给父窗口
         if (mIsChildWindow) {
             ProtoLog.v(WM_DEBUG_ADD_REMOVE, "Adding %s to %s", this, parentWindow);
             parentWindow.addChild(this, sWindowSubLayerComparator);

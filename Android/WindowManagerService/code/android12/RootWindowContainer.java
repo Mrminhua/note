@@ -467,12 +467,12 @@ class RootWindowContainer extends WindowContainer<DisplayContent>
         mDisplayOffTokenAcquirer = mService.new SleepTokenAcquirerImpl(DISPLAY_OFF_SLEEP_TOKEN_TAG);
     }
 
-    boolean updateFocusedWindowLocked(int mode, boolean updateInputWindows) {
-        mTopFocusedAppByProcess.clear();
+    boolean updateFocusedWindowLocked(int mode, boolean updateInputWindows) {// false 1
+        mTopFocusedAppByProcess.clear();//清掉top
         boolean changed = false;
         int topFocusedDisplayId = INVALID_DISPLAY;
-        for (int i = mChildren.size() - 1; i >= 0; --i) {
-            final DisplayContent dc = mChildren.get(i);
+        for (int i = mChildren.size() - 1; i >= 0; --i) {// 从最上层窗口遍历
+            final DisplayContent dc = mChildren.get(i); // 获得displaycontent
             changed |= dc.updateFocusedWindowLocked(mode, updateInputWindows, topFocusedDisplayId);
             final WindowState newFocus = dc.mCurrentFocus;
             if (newFocus != null) {

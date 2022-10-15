@@ -1454,6 +1454,7 @@ public class WindowManagerService extends IWindowManager.Stub
         int[] appOp = new int[1];
         final boolean isRoundedCornerOverlay = (attrs.privateFlags
                 & PRIVATE_FLAG_IS_ROUNDED_CORNERS_OVERLAY) != 0;
+        // 需要具有添加窗口的权限
         int res = mPolicy.checkAddPermission(attrs.type, isRoundedCornerOverlay, attrs.packageName,
                 appOp);
         if (res != ADD_OKAY) {
@@ -1491,13 +1492,14 @@ public class WindowManagerService extends IWindowManager.Stub
                 return WindowManagerGlobal.ADD_DUPLICATE_ADD;
             }
             // 如果是子窗口，那么就需要找到父窗口范围是1000~1999
-            if (type >= FIRST_SUB_WINDOW && type <= LAST_SUB_W9INDOW) {
+            if (type >= FIRST_SUB_WINDOW && type <= LAST_SUB_WINDOW) {
                 parentWindow = windowForClientLocked(null, attrs.token, false);
                 if (parentWindow == null) {
                     ProtoLog.w(WM_ERROR, "Attempted to add window with token that is not a window: "
                             + "%s.  Aborting.", attrs.token);
                     return WindowManagerGlobal.ADD_BAD_SUBWINDOW_TOKEN;
                 }
+                // 子窗口不允许继续添加子窗口
                 if (parentWindow.mAttrs.type >= FIRST_SUB_WINDOW
                         && parentWindow.mAttrs.type <= LAST_SUB_WINDOW) {
                     ProtoLog.w(WM_ERROR, "Attempted to add window with token that is a sub-window: "
@@ -1543,12 +1545,13 @@ public class WindowManagerService extends IWindowManager.Stub
                     hasParent ? parentWindow.mAttrs.token : attrs.token);
             // If this is a child window, we want to apply the same type checking rules as the
             // parent window type.
+            // 根窗口的类型
             final int rootType = hasParent ? parentWindow.mAttrs.type : type;
 
             boolean addToastWindowRequiresToken = false;
 
             final IBinder windowContextToken = attrs.mWindowContextToken;
-
+            // 如果是子窗口则是父窗口的token，否则就是自己，子窗口和父窗口token一致
             if (token == null) {
                 if (!unprivilegedAppCanCreateTokenWith(parentWindow, callingUid, type,
                         rootType, attrs.token, attrs.packageName)) {
@@ -1578,13 +1581,13 @@ public class WindowManagerService extends IWindowManager.Stub
                             .build();
                 }
             } else if (rootType >= FIRST_APPLICATION_WINDOW
-                    && rootType <= LAST_APPLICATION_WINDOW) {
+                    && rootType <= LAST_APPLICATION_WINDOW) {// 如果是activity窗口
                 activity = token.asActivityRecord();
-                if (activity == null) {
+                if (activity == null) {// 没有activity不能添加
                     ProtoLog.w(WM_ERROR, "Attempted to add window with non-application token "
                             + ".%s Aborting.", token);
                     return WindowManagerGlobal.ADD_NOT_APP_TOKEN;
-                } else if (activity.getParent() == null) {
+                } else if (activity.getParent() == null) { // 程序退出不能添加
                     ProtoLog.w(WM_ERROR, "Attempted to add window with exiting application token "
                             + ".%s Aborting.", token);
                     return WindowManagerGlobal.ADD_APP_EXITING;
@@ -1600,32 +1603,32 @@ public class WindowManagerService extends IWindowManager.Stub
                         return WindowManagerGlobal.ADD_DUPLICATE_ADD;
                     }
                 }
-            } else if (rootType == TYPE_INPUT_METHOD) {
+            } else if (rootType == TYPE_INPUT_METHOD) {// 输入法必须是TYPE_INPUT_METHOD
                 if (token.windowType != TYPE_INPUT_METHOD) {
                     ProtoLog.w(WM_ERROR, "Attempted to add input method window with bad token "
                             + "%s.  Aborting.", attrs.token);
                     return WindowManagerGlobal.ADD_BAD_APP_TOKEN;
                 }
             } else if (rootType == TYPE_VOICE_INTERACTION) {
-                if (token.windowType != TYPE_VOICE_INTERACTION) {
+                if (token.windowType != TYPE_VOICE_INTERACTION) {// 语音助手
                     ProtoLog.w(WM_ERROR, "Attempted to add voice interaction window with bad token "
                             + "%s.  Aborting.", attrs.token);
                     return WindowManagerGlobal.ADD_BAD_APP_TOKEN;
                 }
             } else if (rootType == TYPE_WALLPAPER) {
-                if (token.windowType != TYPE_WALLPAPER) {
+                if (token.windowType != TYPE_WALLPAPER) {// 壁纸
                     ProtoLog.w(WM_ERROR, "Attempted to add wallpaper window with bad token "
                             + "%s.  Aborting.", attrs.token);
                     return WindowManagerGlobal.ADD_BAD_APP_TOKEN;
                 }
             } else if (rootType == TYPE_ACCESSIBILITY_OVERLAY) {
-                if (token.windowType != TYPE_ACCESSIBILITY_OVERLAY) {
+                if (token.windowType != TYPE_ACCESSIBILITY_OVERLAY) {// 无障碍服务
                     ProtoLog.w(WM_ERROR,
                             "Attempted to add Accessibility overlay window with bad token "
                                     + "%s.  Aborting.", attrs.token);
                     return WindowManagerGlobal.ADD_BAD_APP_TOKEN;
                 }
-            } else if (type == TYPE_TOAST) {
+            } else if (type == TYPE_TOAST) {// 吐司
                 // Apps targeting SDK above N MR1 cannot arbitrary add toast windows.
                 addToastWindowRequiresToken = doesAddToastWindowRequireToken(attrs.packageName,
                         callingUid, parentWindow);
@@ -1645,13 +1648,15 @@ public class WindowManagerService extends IWindowManager.Stub
                         rootType);
                 // It is not valid to use an app token with other system types; we will
                 // instead make a new token for it (as if null had been passed in for the token).
+                //将应用令牌与其他系统类型一起使用是无效的；我们将
+                //而是为它创建一个新的标记（就好像为该标记传入了null）。
                 attrs.token = null;
                 token = new WindowToken.Builder(this, client.asBinder(), type)
                         .setDisplayContent(displayContent)
                         .setOwnerCanManageAppTokens(session.mCanAddInternalSystemWindow)
                         .build();
             }
-
+            // 创建一个WindowState并分配层级
             final WindowState win = new WindowState(this, session, client, token, parentWindow,
                     appOp[0], attrs, viewVisibility, session.mUid, userId,
                     session.mCanAddInternalSystemWindow);
@@ -1679,7 +1684,7 @@ public class WindowManagerService extends IWindowManager.Stub
             if (res != ADD_OKAY) {
                 return res;
             }
-
+            // 创建inputChannel
             final boolean openInputChannels = (outInputChannel != null
                     && (attrs.inputFeatures & INPUT_FEATURE_NO_INPUT_CHANNEL) == 0);
             if  (openInputChannels) {
@@ -1696,7 +1701,7 @@ public class WindowManagerService extends IWindowManager.Stub
             // window after the toast timeout only if the focused window is from another
             // UID, otherwise we allow unlimited duration. When a UID looses focus we
             // schedule hiding all of its toast windows.
-            if (type == TYPE_TOAST) {
+            if (type == TYPE_TOAST) {// 吐司窗口系统默认隐藏
                 if (!displayContent.canAddToastWindowForUid(callingUid)) {
                     ProtoLog.w(WM_ERROR, "Adding more than one toast window for UID at a time.");
                     return WindowManagerGlobal.ADD_DUPLICATE_ADD;
@@ -1759,7 +1764,7 @@ public class WindowManagerService extends IWindowManager.Stub
             }
 
             win.attach();
-            mWindowMap.put(client.asBinder(), win);
+            mWindowMap.put(client.asBinder(), win);// 添加到系统当中
             win.initAppOpsState();
 
             final boolean suspended = mPmInternal.isPackageSuspended(win.getOwningPackage(),
@@ -1771,24 +1776,24 @@ public class WindowManagerService extends IWindowManager.Stub
 
             boolean imMayMove = true;
 
-            win.mToken.addWindow(win);
+            win.mToken.addWindow(win);// 将创建的窗口添加到token当中
             displayPolicy.addWindowLw(win, attrs);
             displayPolicy.setDropInputModePolicy(win, win.mAttrs);
-            if (type == TYPE_APPLICATION_STARTING && activity != null) {
+            if (type == TYPE_APPLICATION_STARTING && activity != null) {//如果是一个activity的启动窗口
                 activity.attachStartingWindow(win);
                 ProtoLog.v(WM_DEBUG_STARTING_WINDOW, "addWindow: %s startingWindow=%s",
                         activity, win);
             } else if (type == TYPE_INPUT_METHOD
                     // IME window is always touchable.
                     // Ignore non-touchable windows e.g. Stylus InkWindow.java.
-                    && (win.getAttrs().flags & FLAG_NOT_TOUCHABLE) == 0) {
+                    && (win.getAttrs().flags & FLAG_NOT_TOUCHABLE) == 0) {//输入法窗口，不能包含NOT_TOUCHABLE
                 displayContent.setInputMethodWindowLocked(win);
                 imMayMove = false;
             } else if (type == TYPE_INPUT_METHOD_DIALOG) {
                 displayContent.computeImeTarget(true /* updateImeTarget */);
                 imMayMove = false;
             } else {
-                if (type == TYPE_WALLPAPER) {
+                if (type == TYPE_WALLPAPER) { // 壁纸窗口
                     displayContent.mWallpaperController.clearLastWallpaperTimeoutTime();
                     displayContent.pendingLayoutChanges |= FINISH_LAYOUT_REDO_WALLPAPER;
                 } else if (win.hasWallpaper()) {
@@ -1799,6 +1804,7 @@ public class WindowManagerService extends IWindowManager.Stub
                     // layer of the target window, then adjust the wallpaper.
                     // This is to avoid a new window being placed between the
                     // wallpaper and its target.
+                    //如果当前显示的是墙纸，并且新窗口的基础层低于目标窗口的当前层，则调整墙纸。这是为了避免在墙纸和目标之间放置新窗口。
                     displayContent.pendingLayoutChanges |= FINISH_LAYOUT_REDO_WALLPAPER;
                 }
             }
@@ -1830,26 +1836,29 @@ public class WindowManagerService extends IWindowManager.Stub
             displayContent.getInputMonitor().setUpdateInputWindowsNeededLw();
 
             boolean focusChanged = false;
+            // 窗口可以接收按键，触摸等事件，因此需要判断是否要更新焦点l
             if (win.canReceiveKeys()) {
                 focusChanged = updateFocusedWindowLocked(UPDATE_FOCUS_WILL_ASSIGN_LAYERS,
                         false /*updateInputWindows*/);
                 if (focusChanged) {
-                    imMayMove = false;
+                    imMayMove = false;// 焦点改变键盘就需要移动
                 }
             }
 
-            if (imMayMove) {
+            if (imMayMove) {// 从新计算键盘位置
                 displayContent.computeImeTarget(true /* updateImeTarget */);
             }
 
             // Don't do layout here, the window must call
             // relayout to be displayed, so we'll do it there.
-            win.getParent().assignChildLayers();
-
+            //不要在这里做布局，窗口必须调用relayout才能显示，所以我们将在那里做。
+            win.getParent().assignChildLayers();// 分配子窗口层级
+            // 聚焦窗口改变
             if (focusChanged) {
                 displayContent.getInputMonitor().setInputFocusLw(displayContent.mCurrentFocus,
                         false /*updateInputWindows*/);
             }
+            // 更新输入窗口
             displayContent.getInputMonitor().updateInputWindowsLw(false /*force*/);
 
             ProtoLog.v(WM_DEBUG_ADD_REMOVE, "addWindow: New client %s"
@@ -2228,11 +2237,12 @@ public class WindowManagerService extends IWindowManager.Stub
         final int pid = Binder.getCallingPid();
         final int uid = Binder.getCallingUid();
         final long origId = Binder.clearCallingIdentity();
-        synchronized (mGlobalLock) {
+        synchronized (mGlobalLock) {// 获取当前对于的windowstate
             final WindowState win = windowForClientLocked(session, client, false);
             if (win == null) {
                 return 0;
             }
+            // 获的对应的displaycontent
             final DisplayContent displayContent = win.getDisplayContent();
             final DisplayPolicy displayPolicy = displayContent.getDisplayPolicy();
 
@@ -2349,6 +2359,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
             // We should only relayout if the view is visible, it is a starting window, or the
             // associated appToken is not hidden.
+            // 只布局显示的窗口和应用启动窗口
             final boolean shouldRelayout = viewVisibility == View.VISIBLE &&
                     (win.mActivityRecord == null || win.mAttrs.type == TYPE_APPLICATION_STARTING
                             || win.mActivityRecord.isClientVisible());
@@ -2362,6 +2373,12 @@ public class WindowManagerService extends IWindowManager.Stub
             // hiding the window before it's replacement was available. So we just do nothing on
             // our side.
             // This must be called before the call to performSurfacePlacement.
+            //如果我们当前没有运行退出动画，我们需要看看如何开始一个。
+            //我们不希望对等待更换的窗口的可见性设置动画。
+            //在活动的情况下，重新启动子窗口可能会请求更改可见性，因为
+            //在拆卸过程中，它们与主应用程序窗口分离。
+            //如果我们满足了这些可见性更改，那么在替换窗口可用之前，会导致隐藏窗口的视觉故障。所以我们对自己什么都不做。
+            //这必须在调用performSurfacePlacement之前调用。
             if (!shouldRelayout && winAnimator.hasSurface() && !win.mAnimatingExit) {
                 if (DEBUG_VISIBILITY) {
                     Slog.i(TAG_WM,
@@ -2369,15 +2386,15 @@ public class WindowManagerService extends IWindowManager.Stub
                 }
                 result |= RELAYOUT_RES_SURFACE_CHANGED;
                 if (!win.mWillReplaceWindow) {
-                    // When FLAG_SHOW_WALLPAPER flag is removed from a window, we usually set a flag
-                    // in DC#pendingLayoutChanges and update the wallpaper target later.
-                    // However it's possible that FLAG_SHOW_WALLPAPER flag is removed from a window
-                    // when the window is about to exit, so we update the wallpaper target
-                    // immediately here. Otherwise this window will be stuck in exiting and its
-                    // surface remains on the screen.
-                    // TODO(b/189856716): Allow destroying surface even if it belongs to the
-                    //  keyguard target.
-                    if (wallpaperMayMove) {
+                    // When FLAG_SHOW_WALLPAPER flag is removed from a window, we usually set a flag in DC#pendingLayoutChanges and update the wallpaper target later.
+                    // However it's possible that FLAG_SHOW_WALLPAPER flag is removed from a window when the window is about to exit, so we update the wallpaper target immediately here.
+                    // Otherwise this window will be stuck in exiting and its surface remains on the screen.
+                    // TODO(b/189856716): Allow destroying surface even if it belongs to thekeyguard target.
+                    //当从窗口中删除FLAG_SHOW_WALLPAPER标志时，我们通常在DC#pendingLayoutChanges中设置一个标志，然后更新墙纸目标。
+                    //然而，当窗口即将退出时，可能会从窗口中删除FLAG_SHOW_WALLPAPER标志，因此我们立即在此处更新墙纸目标。
+                    //否则，此窗口将卡在退出位置，其表面仍保留在屏幕上。
+                    //TODO（b/189856716）：允许破坏表面，即使它属于keyguard目标。
+                    if (wallpaperMayMove) {// activity的壁纸窗口被移除
                         displayContent.mWallpaperController.adjustWallpaperWindows();
                     }
                     focusMayChange = tryStartExitingAnimation(win, winAnimator, focusMayChange);
@@ -2386,6 +2403,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
             // Create surfaceControl before surface placement otherwise layout will be skipped
             // (because WS.isGoneForLayout() is true when there is no surface.
+            //在放置曲面之前创建surfaceControl，否则将跳过布局（因为没有曲面时WS.isGoneForLayout（）为true。
             if (shouldRelayout) {
                 try {
                     result = createSurfaceControl(outSurfaceControl, result, win, winAnimator);
@@ -2402,6 +2420,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
             // We may be deferring layout passes at the moment, but since the client is interested
             // in the new out values right now we need to force a layout.
+            //我们目前可能会推迟布局传递，但由于客户现在对新的输出值感兴趣，我们需要强制布局。
             mWindowPlacerLocked.performSurfacePlacement(true /* force */);
 
             if (shouldRelayout) {
@@ -2429,6 +2448,7 @@ public class WindowManagerService extends IWindowManager.Stub
                     // We already told the client to go invisible, but the message may not be
                     // handled yet, or it might want to draw a last frame. If we already have a
                     // surface, let the client use that, but don't create new surface at this point.
+                    //我们已经告诉客户机不可见，但消息可能尚未处理，或者可能需要绘制最后一帧。如果我们已经有了一个曲面，让客户使用它，但此时不要创建新曲面。
                     Trace.traceBegin(TRACE_TAG_WINDOW_MANAGER, "relayoutWindow: getSurface");
                     winAnimator.mSurfaceController.getSurfaceControl(outSurfaceControl);
                     Trace.traceEnd(TRACE_TAG_WINDOW_MANAGER);
@@ -2455,6 +2475,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
             // updateFocusedWindowLocked() already assigned layers so we only need to
             // reassign them at this point if the IM window state gets shuffled
+            // updateFocusedWindowLocked（）已经分配了层，因此如果IM窗口状态被改组，我们只需要在此时重新分配它们
             boolean toBeDisplayed = (result & WindowManagerGlobal.RELAYOUT_RES_FIRST_TIME) != 0;
             if (imMayMove) {
                 displayContent.computeImeTarget(true /* updateImeTarget */);
@@ -2463,6 +2484,8 @@ public class WindowManagerService extends IWindowManager.Stub
                     // true if the IME has moved and needs its layer recomputed. However, if the IME
                     // was hidden and isn't actually moved in the list, its layer may be out of data
                     // so we make sure to recompute it.
+                    //这里的小技巧——如果IME已经移动并且需要重新计算其层，我们应该能够依赖函数返回true。
+                    //然而，如果IME是隐藏的，并且没有在列表中实际移动，那么它的层可能没有数据，所以我们确保重新计算它。
                     displayContent.assignWindowLayers(false /* setLayoutNeeded */);
                 }
             }
@@ -2497,6 +2520,7 @@ public class WindowManagerService extends IWindowManager.Stub
                     false /* useLatestConfig */, shouldRelayout);
 
             // Set resize-handled here because the values are sent back to the client.
+            //设置此处处理的调整大小，因为这些值会发送回客户端。
             win.onResizeHandled();
 
             outInsetsState.set(win.getCompatInsetsState(), win.isClientLocal());
@@ -2549,10 +2573,12 @@ public class WindowManagerService extends IWindowManager.Stub
                 // We will leave the critical section before returning the leash to the client,
                 // so we need to copy the leash to prevent others release the one that we are
                 // about to return.
+                //我们将在把皮带还给客户之前离开关键部分，所以我们需要复制皮带，以防止其他人释放我们即将返回的皮带。
                 if (controls[i] != null) {
                     // This source control is an extra copy if the client is not local. By setting
                     // PARCELABLE_WRITE_RETURN_VALUE, the leash will be released at the end of
                     // SurfaceControl.writeToParcel.
+                    //如果客户端不是本地的，则此源代码管理是一个额外的副本。通过设置PARCELABLE_WRITE_RETURN_VALUE，将在SurfaceControl.writeToParcel结束时释放牵引。
                     outControls[i] = new InsetsSourceControl(controls[i]);
                     outControls[i].setParcelableFlags(PARCELABLE_WRITE_RETURN_VALUE);
                 }

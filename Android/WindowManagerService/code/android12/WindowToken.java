@@ -285,19 +285,19 @@ class WindowToken extends WindowContainer<WindowState> {
         ProtoLog.d(WM_DEBUG_FOCUS,
                 "addWindow: win=%s Callers=%s", win, Debug.getCallers(5));
 
-        if (win.isChildWindow()) {
+        if (win.isChildWindow()) {// 子窗口已经在windowstate当中添加到父窗口了
             // Child windows are added to their parent windows.
             return;
         }
         // This token is created from WindowContext and the client requests to addView now, create a
         // surface for this token.
         if (mSurfaceControl == null) {
-            createSurfaceControl(true /* force */);
+            createSurfaceControl(true /* force */);//为窗口创建surfaceControl
 
             // Layers could have been assigned before the surface was created, update them again
-            reassignLayer(getSyncTransaction());
+            reassignLayer(getSyncTransaction());// 重新分配层级
         }
-        if (!mChildren.contains(win)) {
+        if (!mChildren.contains(win)) {// 将自己也添加的Token当中
             ProtoLog.v(WM_DEBUG_ADD_REMOVE, "Adding %s to %s", win, this);
             addChild(win, mWindowComparator);
             mWmService.mWindowsChanged = true;

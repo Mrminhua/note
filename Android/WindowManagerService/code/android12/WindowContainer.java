@@ -172,6 +172,8 @@ class WindowContainer<E extends WindowContainer> extends ConfigurationContainer<
 
     // List of children for this window container. List is in z-order as the children appear on
     // screen with the top-most window container at the tail of the list.
+    //此窗口容器的子级列表。列表按子级显示的z顺序排列
+    //屏幕，最上面的窗口容器位于列表的尾部。
     protected final WindowList<E> mChildren = new WindowList<E>();
 
     // The specified orientation for this window container.
