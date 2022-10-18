@@ -2225,7 +2225,7 @@ public class WindowManagerService extends IWindowManager.Stub
         return mContext.checkPermission(permission.STATUS_BAR, pid, uid)
                         == PackageManager.PERMISSION_GRANTED;
     }
-
+    // outFrames保存计算后的大小
     public int relayoutWindow(Session session, IWindow client, LayoutParams attrs,
             int requestedWidth, int requestedHeight, int viewVisibility, int flags,
             ClientWindowFrames outFrames, MergedConfiguration mergedConfiguration,
@@ -2247,7 +2247,7 @@ public class WindowManagerService extends IWindowManager.Stub
             final DisplayPolicy displayPolicy = displayContent.getDisplayPolicy();
 
             WindowStateAnimator winAnimator = win.mWinAnimator;
-            if (viewVisibility != View.GONE) {
+            if (viewVisibility != View.GONE) { // 记录窗口请求的宽高
                 win.setRequestedSize(requestedWidth, requestedHeight);
             }
 
@@ -2276,6 +2276,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
                 flagChanges = win.mAttrs.flags ^ attrs.flags;
                 privateFlagChanges = win.mAttrs.privateFlags ^ attrs.privateFlags;
+                // 拷贝改变的属性
                 attrChanges = win.mAttrs.copyFrom(attrs);
                 if ((attrChanges & (WindowManager.LayoutParams.LAYOUT_CHANGED
                         | WindowManager.LayoutParams.SYSTEM_UI_VISIBILITY_CHANGED)) != 0) {
@@ -2334,12 +2335,14 @@ public class WindowManagerService extends IWindowManager.Stub
                             && viewVisibility == View.VISIBLE;
             boolean imMayMove = (flagChanges & (FLAG_ALT_FOCUSABLE_IM | FLAG_NOT_FOCUSABLE)) != 0
                     || becameVisible;
+            // 如果窗口不是显示或者包含FLAG_NOT_FOCUSABLE则可能聚焦改变
             boolean focusMayChange = win.mViewVisibility != viewVisibility
                     || ((flagChanges & FLAG_NOT_FOCUSABLE) != 0)
                     || (!win.mRelayoutCalled);
 
             boolean wallpaperMayMove = win.mViewVisibility != viewVisibility
                     && win.hasWallpaper();
+            // 如果包含移动壁纸的Flag则
             wallpaperMayMove |= (flagChanges & FLAG_SHOW_WALLPAPER) != 0;
             if ((flagChanges & FLAG_SECURE) != 0 && winAnimator.mSurfaceController != null) {
                 winAnimator.mSurfaceController.setSecure(win.isSecureLocked());
@@ -2347,7 +2350,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
             win.mRelayoutCalled = true;
             win.mInRelayout = true;
-
+            // 设置为显示
             win.setViewVisibility(viewVisibility);
             ProtoLog.i(WM_DEBUG_SCREEN_ON,
                     "Relayout %s: oldVis=%d newVis=%d. %s", win, oldVisibility,
@@ -2397,6 +2400,7 @@ public class WindowManagerService extends IWindowManager.Stub
                     if (wallpaperMayMove) {// activity的壁纸窗口被移除
                         displayContent.mWallpaperController.adjustWallpaperWindows();
                     }
+                    // 启动退出动画
                     focusMayChange = tryStartExitingAnimation(win, winAnimator, focusMayChange);
                 }
             }
@@ -2467,9 +2471,9 @@ public class WindowManagerService extends IWindowManager.Stub
                 Trace.traceEnd(TRACE_TAG_WINDOW_MANAGER);
             }
 
-            if (focusMayChange) {
+            if (focusMayChange) {// 更新窗口焦点
                 if (updateFocusedWindowLocked(UPDATE_FOCUS_NORMAL, true /*updateInputWindows*/)) {
-                    imMayMove = false;
+                    imMayMove = false;// 键盘可能移动
                 }
             }
 

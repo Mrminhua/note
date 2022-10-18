@@ -2699,13 +2699,13 @@ public final class ViewRootImpl implements ViewParent,
 
         mIsInTraversal = true;
         mWillDrawSoon = true;
-        boolean windowSizeMayChange = false;
+        boolean windowSizeMayChange = false;// 默认尺寸不改变
         WindowManager.LayoutParams lp = mWindowAttributes;
 
-        int desiredWindowWidth;
-        int desiredWindowHeight;
+        int desiredWindowWidth;// 窗口目标宽度
+        int desiredWindowHeight;// 窗口目标高度
 
-        final int viewVisibility = getHostVisibility();
+        final int viewVisibility = getHostVisibility(); //
         final boolean viewVisibilityChanged = !mFirst
                 && (mViewVisibility != viewVisibility || mNewSurfaceNeeded
                 // Also check for possible double visibility update, which will make current
@@ -2731,29 +2731,33 @@ public final class ViewRootImpl implements ViewParent,
             }
         }
 
-        Rect frame = mWinFrame;
-        if (mFirst) {
+        if (mFirst) { // 如果是第一次布局
+            Rect frame = mWinFrame;// 保存activity的宽和高
             mFullRedrawNeeded = true;
             mLayoutRequested = true;
 
             final Configuration config = getConfiguration();
-            if (shouldUseDisplaySize(lp)) {
+            if (shouldUseDisplaySize(lp)) {// 如果类型则宽高是屏幕大小
                 // NOTE -- system code, won't try to do compat mode.
                 Point size = new Point();
                 mDisplay.getRealSize(size);
                 desiredWindowWidth = size.x;
-                desiredWindowHeight = size.y;
+                desiredWindowHeight = size.y; 
             } else if (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT
                     || lp.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+                 //如果参数设置了WARP_CONTENT则是系统限制区域的大小
                 // For wrap content, we have to remeasure later on anyways. Use size consistent with
                 // below so we get best use of the measure cache.
+                //对于包装内容，无论如何，我们必须稍后重新测量。使用与下面一致的大小，以便我们能够充分利用度量缓存。
                 final Rect bounds = getWindowBoundsInsetSystemBars();
                 desiredWindowWidth = bounds.width();
                 desiredWindowHeight = bounds.height();
-            } else {
+            } else {// qita/场景则是frame的宽高
                 // After addToDisplay, the frame contains the frameHint from window manager, which
                 // for most windows is going to be the same size as the result of relayoutWindow.
                 // Using this here allows us to avoid remeasuring after relayoutWindow
+                //在addToDisplay之后，框架包含来自窗口管理器的frameHint，对于大多数窗口来说，它的大小将与relayoutWindow的结果相同。
+                //在这里使用它可以避免在relayoutWindow之后重新测量
                 desiredWindowWidth = frame.width();
                 desiredWindowHeight = frame.height();
             }
@@ -2761,12 +2765,16 @@ public final class ViewRootImpl implements ViewParent,
             // We used to use the following condition to choose 32 bits drawing caches:
             // PixelFormat.hasAlpha(lp.format) || lp.format == PixelFormat.RGBX_8888
             // However, windows are now always 32 bits by default, so choose 32 bits
+            //我们过去使用以下条件来选择32位绘图缓存：
+            //PixelFormat.hasAlpha（lp.format）||lp。format==像素格式.RGBX_8888
+            //然而，默认情况下窗口总是32位，所以选择32位
             mAttachInfo.mUse32BitDrawingCache = true;
             mAttachInfo.mWindowVisibility = viewVisibility;
             mAttachInfo.mRecomputeGlobalAttributes = false;
             mLastConfigurationFromResources.setTo(config);
             mLastSystemUiVisibility = mAttachInfo.mSystemUiVisibility;
             // Set the layout direction if it has not been set before (inherit is the default)
+            //如果以前未设置布局方向，请设置布局方向（默认为inherit）
             if (mViewLayoutDirectionInitial == View.LAYOUT_DIRECTION_INHERIT) {
                 host.setLayoutDirection(config.getLayoutDirection());
             }
@@ -2774,7 +2782,7 @@ public final class ViewRootImpl implements ViewParent,
             mAttachInfo.mTreeObserver.dispatchOnWindowAttachedChange(true);
             dispatchApplyInsets(host);
         } else {
-            desiredWindowWidth = frame.width();
+            desiredWindowWidth = frame.width(); // 不是第一次则直接是保存的宽高
             desiredWindowHeight = frame.height();
             if (desiredWindowWidth != mWidth || desiredWindowHeight != mHeight) {
                 if (DEBUG_ORIENTATION) Log.v(mTag, "View " + host + " resized to: " + frame);
@@ -2784,7 +2792,7 @@ public final class ViewRootImpl implements ViewParent,
             }
         }
 
-        if (viewVisibilityChanged) {
+        if (viewVisibilityChanged) { 
             mAttachInfo.mWindowVisibility = viewVisibility;
             host.dispatchWindowVisibilityChanged(viewVisibility);
             if (viewUserVisibilityChanged) {
@@ -2833,6 +2841,7 @@ public final class ViewRootImpl implements ViewParent,
             }
 
             // Ask host how big it wants to be
+            // 如果测量的大小与与之前的窗口宽高不一致说明窗口大小发生了变化
             windowSizeMayChange |= measureHierarchy(host, lp, mView.getContext().getResources(),
                     desiredWindowWidth, desiredWindowHeight);
         }
@@ -2885,7 +2894,7 @@ public final class ViewRootImpl implements ViewParent,
             // layout pass.
             mLayoutRequested = false;
         }
-
+        // 如果需要布局请求，并且窗口发生了变化，那么就需要从新计算大小
         boolean windowShouldResize = layoutRequested && windowSizeMayChange
             && ((mWidth != host.getMeasuredWidth() || mHeight != host.getMeasuredHeight())
                 || (lp.width == ViewGroup.LayoutParams.WRAP_CONTENT &&

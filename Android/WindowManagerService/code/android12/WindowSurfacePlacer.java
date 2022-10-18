@@ -155,7 +155,7 @@ class WindowSurfacePlacer {
         }
 
         mInLayout = true;
-
+        // 移除需要回收的窗口
         if (!mService.mForceRemoves.isEmpty()) {
             // Wait a little bit for things to settle down, and off we go.
             while (!mService.mForceRemoves.isEmpty()) {
@@ -179,7 +179,7 @@ class WindowSurfacePlacer {
             mInLayout = false;
 
             if (mService.mRoot.isLayoutNeeded()) {
-                if (++mLayoutRepeatCount < 6) {
+                if (++mLayoutRepeatCount < 6) { // 布局重复次数小于6
                     requestTraversal();
                 } else {
                     Slog.e(TAG, "Performed 6 layouts in a row. Skipping");
